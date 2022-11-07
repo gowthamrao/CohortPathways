@@ -429,8 +429,11 @@ executeCohortPathways <- function(connectionDetails = NULL,
   for (i in (1:length(instantiatedTargetCohortIds))) {
     targetCohortId <- instantiatedTargetCohortIds[[i]]
     
-    generationId <-  (as.integer(format(Sys.Date(), "%Y%m%d")) * 1000) + 
-      sample(x = 1:1000, size = 1, replace = FALSE)
+    generationId <-
+      (as.integer(format(Sys.Date(), "%Y%m%d")) * 1000) +
+      sample(x = 1:1000,
+             size = 1,
+             replace = FALSE)
     
     eventCohortIdIndexMap <- eventCohortIdIndexMaps %>%
       dplyr::rowwise() %>%
@@ -446,13 +449,15 @@ executeCohortPathways <- function(connectionDetails = NULL,
       dplyr::pull(sql) %>%
       paste0(collapse = " union all ")
     
-    ParallelLogger::logInfo(paste0(
-      "   Generating Cohort Pathways for target cohort: ",
-      targetCohortId,
-      ". Generation id: ",
-      generationId,
-      "."
-    ))
+    ParallelLogger::logInfo(
+      paste0(
+        "   Generating Cohort Pathways for target cohort: ",
+        targetCohortId,
+        ". Generation id: ",
+        generationId,
+        "."
+      )
+    )
     
     DatabaseConnector::renderTranslateExecuteSql(
       connection = connection,
@@ -490,7 +495,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
     DatabaseConnector::renderTranslateQuerySql(
       connection = connection,
       sql = "SELECT * FROM @pathway_analysis_stats
-              WHERE target_cohort_id = @target_cohort_id
+              WHERE target_cohort_id IN (@target_cohort_id)
                 AND pathway_analysis_generation_id IN (@pathways_analysis_generation_ids);",
       snakeCaseToCamelCase = TRUE,
       pathway_analysis_stats = pathwayAnalysisStats,
@@ -503,7 +508,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
     DatabaseConnector::renderTranslateQuerySql(
       connection = connection,
       sql = " SELECT * FROM @pathway_analysis_paths
-              WHERE target_cohort_id = @target_cohort_id
+              WHERE target_cohort_id IN (@target_cohort_id)
                 AND pathway_analysis_generation_id IN (@pathways_analysis_generation_ids);",
       snakeCaseToCamelCase = TRUE,
       pathway_analysis_paths = pathwayAnalysisPaths,
@@ -527,36 +532,39 @@ executeCohortPathways <- function(connectionDetails = NULL,
   pathwayAnalysisCodesLong <- c()
   for (i in (1:nrow(pathwaycomboIds))) {
     combisData <-
-      dplyr::tibble(cohortIndex = extractBitSum(x = pathwaycomboIds[i,]$comboIds)) %>%
-      dplyr::mutate(comboId = pathwaycomboIds[i,]$comboIds) %>%
+      dplyr::tibble(cohortIndex = extractBitSum(x = pathwaycomboIds[i, ]$comboIds)) %>%
+      dplyr::mutate(comboId = pathwaycomboIds[i, ]$comboIds) %>%
+      dplyr::mutate(targetCohortId = targetCohortId) %>% 
       dplyr::inner_join(eventCohortIdIndexMaps,
                         by = "cohortIndex") %>%
-      dplyr::rename("cohortId" = eventCohortId) %>%
       dplyr::inner_join(cohortDefinitionSet,
-                        by = "cohortId")
+                        by = c("eventCohortId" = "cohortId")) %>% 
+      dplyr::rename(eventCohortName = cohortName)
     
     pathwayAnalysisCodesLong <- dplyr::bind_rows(combisData,
                                                  pathwayAnalysisCodesLong)
   }
   
   isCombo <- pathwayAnalysisCodesLong %>%
-    dplyr::select(comboId,
-                  cohortId) %>%
+    dplyr::select(targetCohortId,
+                  comboId,
+                  eventCohortId) %>%
     dplyr::distinct() %>%
-    dplyr::group_by(comboId) %>%
+    dplyr::group_by(targetCohortId, comboId) %>%
     dplyr::summarise(numberOfEvents = dplyr::n()) %>%
     dplyr::mutate(isCombo = dplyr::case_when(numberOfEvents > 1 ~ 1, TRUE ~
                                                0))
   
   pathwayAnalysisCodesLong <- pathwayAnalysisCodesLong %>%
     dplyr::inner_join(isCombo,
-                      by = "comboId") %>%
+                      by = c("targetCohortId", "comboId")) %>%
     tidyr::crossing(dplyr::tibble(pathwayAnalysisGenerationId = generationIds)) %>%
     dplyr::select(
       pathwayAnalysisGenerationId,
       comboId,
-      cohortId,
-      cohortName,
+      targetCohortId,
+      eventCohortId,
+      eventCohortName,
       isCombo,
       numberOfEvents
     ) %>%
@@ -565,40 +573,40 @@ executeCohortPathways <- function(connectionDetails = NULL,
   pathwayAnalysisCodesData <- pathwayAnalysisCodesLong %>%
     dplyr::select(pathwayAnalysisGenerationId,
                   code,
-                  cohortName,
+                  eventCohortName,
                   isCombo) %>%
     dplyr::group_by(pathwayAnalysisGenerationId,
                     code,
                     isCombo) %>%
-    dplyr::mutate(name = paste0(cohortName, collapse = " + ")) %>%
+    dplyr::mutate(name = paste0(eventCohortName, collapse = " + ")) %>%
     dplyr::select(pathwayAnalysisGenerationId,
                   code,
                   name,
                   isCombo)
   
   readr::write_excel_csv(
-    x = pathwayAnalysisStatsData,
+    x = pathwayAnalysisStatsData %>% SqlRender::camelCaseToSnakeCaseNames(),
     file = file.path(exportFolder, "pathwayAnalysisStatsData.csv"),
     na = "",
     append = FALSE
   )
   
   readr::write_excel_csv(
-    x = pathwaysAnalysisPathsData,
+    x = pathwaysAnalysisPathsData %>% SqlRender::camelCaseToSnakeCaseNames(),
     file = file.path(exportFolder, "pathwaysAnalysisPathsData.csv"),
     na = "",
     append = FALSE
   )
   
   readr::write_excel_csv(
-    x = pathwayAnalysisCodesData,
+    x = pathwayAnalysisCodesData %>% SqlRender::camelCaseToSnakeCaseNames(),
     file = file.path(exportFolder, "pathwayAnalysisCodes.csv"),
     na = "",
     append = FALSE
   )
   
   readr::write_excel_csv(
-    x = pathwayAnalysisCodesLong,
+    x = pathwayAnalysisCodesLong %>% SqlRender::camelCaseToSnakeCaseNames(),
     file = file.path(exportFolder, "pathwayAnalysisCodesLong.csv"),
     na = "",
     append = FALSE
