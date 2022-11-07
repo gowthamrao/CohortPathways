@@ -5,3 +5,7 @@
 *.tmp
 .Rprofile
 errorReportSql.txt
+pathwaysAnalysisPathsData.csv
+pathwayAnalysisCodesLong.csv
+pathwayAnalysisCodes.csv
+pathwaysAnalysisPathsData.csv

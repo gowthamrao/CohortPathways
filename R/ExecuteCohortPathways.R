@@ -430,7 +430,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
     targetCohortId <- instantiatedTargetCohortIds[[i]]
     
     generationId <-  (as.integer(format(Sys.Date(), "%Y%m%d")) * 1000) + 
-      sample(1:1000, 1, replace = FALSE)
+      sample(x = 1:1000, size = 1, replace = FALSE)
     
     eventCohortIdIndexMap <- eventCohortIdIndexMaps %>%
       dplyr::rowwise() %>%
@@ -450,8 +450,10 @@ executeCohortPathways <- function(connectionDetails = NULL,
       "   Generating Cohort Pathways for target cohort: ",
       targetCohortId,
       ". Generation id: ",
-      generationId
+      generationId,
+      "."
     ))
+    
     DatabaseConnector::renderTranslateExecuteSql(
       connection = connection,
       sql = pathwayAnalysisSql,
@@ -477,7 +479,6 @@ executeCohortPathways <- function(connectionDetails = NULL,
       progressBar = FALSE,
       reportOverallTime = FALSE,
       pathway_analysis_events = pathwayAnalysisEvents,
-      pathway_analysis_stats = pathwayAnalysisStats,
       tempEmulationSchema = tempEmulationSchema,
       pathway_analysis_paths = pathwayAnalysisPaths,
       generation_id = generationId
