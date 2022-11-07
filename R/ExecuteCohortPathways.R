@@ -236,7 +236,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
       sprintf(
         "    Found %s of %s (%1.2f%%) event cohorts instantiated. ",
         nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(
-          targetCohortIds
+          eventCohortIds
         ))),
         length(eventCohortIds),
         100 * (
