@@ -18,7 +18,8 @@ executeCohortPathways(
   minCellCount = 5,
   allowRepeats = FALSE,
   maxDepth = 5,
-  collapseWindow = 30
+  collapseWindow = 30,
+  overwrite = TRUE
 )
 }
 \arguments{
@@ -58,6 +59,8 @@ does not exist it will be created.}
 \item{maxDepth}{(Default = 5) Maximum number of steps in a given pathway to be included in the sunburst plot.}
 
 \item{collapseWindow}{(Default = 30) Any dates found within the specified collapse days will be reassigned the earliest date. Collapsing dates reduces pathway variation, leading to a reduction in 'noise' in the result.}
+
+\item{overwrite}{(Default = TRUE) Do you want to overwrite results?}
 
 \item{targetDatabaseSchema}{(Optional) Schema name where output pathway tables would reside. This is also known as
 as resultsDatabaseSChema. If not specified, scratch schema will be used. The output may not

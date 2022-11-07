@@ -38,6 +38,7 @@
 #' @param allowRepeats                (Default = FALSE) Allow cohort events/combos to appear multiple times in the same pathway.
 #' @param maxDepth                    (Default = 5) Maximum number of steps in a given pathway to be included in the sunburst plot.
 #' @param collapseWindow              (Default = 30) Any dates found within the specified collapse days will be reassigned the earliest date. Collapsing dates reduces pathway variation, leading to a reduction in 'noise' in the result.
+#' @param overwrite                   (Default = TRUE) Do you want to overwrite results?
 #'
 #' @examples
 #' \dontrun{
@@ -71,7 +72,8 @@ executeCohortPathways <- function(connectionDetails = NULL,
                                   minCellCount = 5,
                                   allowRepeats = FALSE,
                                   maxDepth = 5,
-                                  collapseWindow = 30) {
+                                  collapseWindow = 30,
+                                  overwrite = TRUE) {
   start <- Sys.time()
   ParallelLogger::logInfo("Run Cohort Pathways started at ", start)
   
@@ -94,6 +96,12 @@ executeCohortPathways <- function(connectionDetails = NULL,
   )
   checkmate::assertInteger(x = maxDepth, lower = 0, add = errorMessage)
   checkmate::assertInteger(x = collapseWindow, lower = 0, add = errorMessage)
+  checkmate::assertLogical(
+    x = overwrite,
+    any.missing = FALSE,
+    len = 1,
+    add = errorMessage
+  )
   exportFolder <- normalizePath(exportFolder, mustWork = FALSE)
   errorMessage <-
     createIfNotExist(type = "folder",
@@ -115,21 +123,49 @@ executeCohortPathways <- function(connectionDetails = NULL,
   )
   checkmate::reportAssertions(collection = errorMessage)
   
-  if (file.exists(file.path(exportFolder, "pathwaysAnalysisPathsData.csv"))) {
-    stop("Previous pathwaysAnalysisPathsData.csv exists in export folder", exportFolder)
-  }
   
   if (file.exists(file.path(exportFolder, "pathwaysAnalysisPathsData.csv"))) {
-    stop("Previous pathwaysAnalysisPathsData.csv exists in export folder", exportFolder)
+    if (!overwrite) {
+      stop("   Previous pathwaysAnalysisPathsData.csv exists in export folder",
+           exportFolder)
+    } else {
+      ParallelLogger::logInfo(
+        "   Previous pathwaysAnalysisPathsData.csv exists in export folder and will be replaced."
+      )
+    }
+  }
+  
+  if (file.exists(file.path(exportFolder, "pathwayAnalysisStatsData.csv"))) {
+    if (!overwrite) {
+      stop("   Previous pathwayAnalysisStatsData.csv exists in export folder.",
+           exportFolder)
+    } else {
+      ParallelLogger::logInfo(
+        "   Previous pathwayAnalysisStatsData.csv exists in export folder and will be replaced."
+      )
+    }
   }
   
   if (file.exists(file.path(exportFolder, "pathwayAnalysisCodes.csv"))) {
-    stop("Previous pathwayAnalysisCodes.csv exists in export folder", exportFolder)
+    if (!overwrite) {
+      stop("   Previous pathwayAnalysisCodes.csv exists in export folder.",
+           exportFolder)
+    } else {
+      ParallelLogger::logInfo("   Previous pathwayAnalysisCodes.csv exists in export folder and will be replaced.")
+    }
   }
   
   if (file.exists(file.path(exportFolder, "pathwayAnalysisCodesLong.csv"))) {
-    stop("Previous pathwayAnalysisCodesLong.csv exists in export folder", exportFolder)
+    if (!overwrite) {
+      stop("   Previous pathwayAnalysisCodesLong.csv exists in export folder.",
+           exportFolder)
+    } else {
+      ParallelLogger::logInfo(
+        "   Previous pathwayAnalysisCodesLong.csv exists in export folder and will be replaced."
+      )
+    }
   }
+  
   
   if (is.null(connection)) {
     connection <- DatabaseConnector::connect(connectionDetails)
@@ -222,8 +258,10 @@ executeCohortPathways <- function(connectionDetails = NULL,
   if (!is.null(targetDatabaseSChema)) {
     pathwayAnalysisCodes <-
       paste0(targetDatabaseSChema, ".", pathwayAnalysisCodeTable)
+    pathwayAnalysisCodesTableIsTemp <- FALSE
   } else {
     pathwayAnalysisCodes <- paste0("#", pathwayAnalysisCodes)
+    pathwayAnalysisCodesTableIsTemp <- TRUE
   }
   
   pathwayAnalysisEvents <- 'pathway_analysis_events'
@@ -391,7 +429,8 @@ executeCohortPathways <- function(connectionDetails = NULL,
   for (i in (1:length(instantiatedTargetCohortIds))) {
     targetCohortId <- instantiatedTargetCohortIds[[i]]
     
-    generationId <- sample(1:10000, 1, replace = FALSE)
+    generationId <-  (as.integer(format(Sys.Date(), "%Y%m%d")) * 1000) + 
+      sample(1:1000, 1, replace = FALSE)
     
     eventCohortIdIndexMap <- eventCohortIdIndexMaps %>%
       dplyr::rowwise() %>%
@@ -408,8 +447,10 @@ executeCohortPathways <- function(connectionDetails = NULL,
       paste0(collapse = " union all ")
     
     ParallelLogger::logInfo(paste0(
-      "Generating Cohort Pathways for target cohort: ",
-      targetCohortId
+      "   Generating Cohort Pathways for target cohort: ",
+      targetCohortId,
+      ". Generation id: ",
+      generationId
     ))
     DatabaseConnector::renderTranslateExecuteSql(
       connection = connection,
@@ -485,8 +526,8 @@ executeCohortPathways <- function(connectionDetails = NULL,
   pathwayAnalysisCodesLong <- c()
   for (i in (1:nrow(pathwaycomboIds))) {
     combisData <-
-      dplyr::tibble(cohortIndex = extractBitSum(x = pathwaycomboIds[i, ]$comboIds)) %>%
-      dplyr::mutate(comboId = pathwaycomboIds[i, ]$comboIds) %>%
+      dplyr::tibble(cohortIndex = extractBitSum(x = pathwaycomboIds[i,]$comboIds)) %>%
+      dplyr::mutate(comboId = pathwaycomboIds[i,]$comboIds) %>%
       dplyr::inner_join(eventCohortIdIndexMaps,
                         by = "cohortIndex") %>%
       dplyr::rename("cohortId" = eventCohortId) %>%
@@ -509,24 +550,30 @@ executeCohortPathways <- function(connectionDetails = NULL,
   pathwayAnalysisCodesLong <- pathwayAnalysisCodesLong %>%
     dplyr::inner_join(isCombo,
                       by = "comboId") %>%
-    tidyr::crossing(dplyr::tibble(pathwaysAnalysisGenerationId = generationIds)) %>%
-    dplyr::select(pathwaysAnalysisGenerationId,
-                  comboId,
-                  cohortId,
-                  cohortName,
-                  isCombo,
-                  numberOfEvents) %>% 
+    tidyr::crossing(dplyr::tibble(pathwayAnalysisGenerationId = generationIds)) %>%
+    dplyr::select(
+      pathwayAnalysisGenerationId,
+      comboId,
+      cohortId,
+      cohortName,
+      isCombo,
+      numberOfEvents
+    ) %>%
     dplyr::rename("code" = comboId)
   
-  pathwayAnalysisCodes <- pathwayAnalysisCodesLong %>%
-    dplyr::select(pathwaysAnalysisGenerationId,
+  pathwayAnalysisCodesData <- pathwayAnalysisCodesLong %>%
+    dplyr::select(pathwayAnalysisGenerationId,
                   code,
                   cohortName,
                   isCombo) %>%
-    dplyr::group_by(pathwaysAnalysisGenerationId,
+    dplyr::group_by(pathwayAnalysisGenerationId,
                     code,
                     isCombo) %>%
-    dplyr::mutate(name = paste0(cohortName, collapse = " + "))
+    dplyr::mutate(name = paste0(cohortName, collapse = " + ")) %>%
+    dplyr::select(pathwayAnalysisGenerationId,
+                  code,
+                  name,
+                  isCombo)
   
   readr::write_excel_csv(
     x = pathwayAnalysisStatsData,
@@ -543,7 +590,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
   )
   
   readr::write_excel_csv(
-    x = pathwayAnalysisCodes,
+    x = pathwayAnalysisCodesData,
     file = file.path(exportFolder, "pathwayAnalysisCodes.csv"),
     na = "",
     append = FALSE
@@ -554,6 +601,17 @@ executeCohortPathways <- function(connectionDetails = NULL,
     file = file.path(exportFolder, "pathwayAnalysisCodesLong.csv"),
     na = "",
     append = FALSE
+  )
+  
+  DatabaseConnector::insertTable(
+    connection = connection,
+    databaseSchema = targetDatabaseSChema,
+    tableName = pathwayAnalysisCodes,
+    data = pathwayAnalysisCodesData,
+    dropTableIfExists = FALSE,
+    createTable = FALSE,
+    tempTable = pathwayAnalysisCodesTableIsTemp,
+    camelCaseToSnakeCase = TRUE
   )
   
   delta <- Sys.time() - start
