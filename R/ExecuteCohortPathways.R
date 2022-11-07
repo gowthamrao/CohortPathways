@@ -221,26 +221,26 @@ executeCohortPathways <- function(connectionDetails = NULL,
     ParallelLogger::logInfo(
       sprintf(
         "    Found %s of %s (%1.2f%%) target cohorts instantiated. ",
-        length(targetCohortIds),
         nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(
           targetCohortIds
         ))),
+        length(targetCohortIds),
         100 * (
-          length(targetCohortIds) / nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(
+          nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(
             targetCohortIds
-          )))
+          ))) / length(targetCohortIds)
         )
       )
     )
     ParallelLogger::logInfo(
       sprintf(
         "    Found %s of %s (%1.2f%%) event cohorts instantiated. ",
-        length(eventCohortIds),
         nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(
           targetCohortIds
         ))),
+        length(eventCohortIds),
         100 * (
-          length(eventCohortIds) / nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(eventCohortIds)))
+          nrow(cohortCounts %>% dplyr::filter(cohortId %in% c(eventCohortIds))) / length(eventCohortIds)
         )
       )
     )
@@ -532,13 +532,13 @@ executeCohortPathways <- function(connectionDetails = NULL,
   pathwayAnalysisCodesLong <- c()
   for (i in (1:nrow(pathwaycomboIds))) {
     combisData <-
-      dplyr::tibble(cohortIndex = extractBitSum(x = pathwaycomboIds[i, ]$comboIds)) %>%
-      dplyr::mutate(comboId = pathwaycomboIds[i, ]$comboIds) %>%
-      dplyr::mutate(targetCohortId = targetCohortId) %>% 
+      dplyr::tibble(cohortIndex = extractBitSum(x = pathwaycomboIds[i,]$comboIds)) %>%
+      dplyr::mutate(comboId = pathwaycomboIds[i,]$comboIds) %>%
+      dplyr::mutate(targetCohortId = targetCohortId) %>%
       dplyr::inner_join(eventCohortIdIndexMaps,
                         by = "cohortIndex") %>%
       dplyr::inner_join(cohortDefinitionSet,
-                        by = c("eventCohortId" = "cohortId")) %>% 
+                        by = c("eventCohortId" = "cohortId")) %>%
       dplyr::rename(eventCohortName = cohortName)
     
     pathwayAnalysisCodesLong <- dplyr::bind_rows(combisData,
