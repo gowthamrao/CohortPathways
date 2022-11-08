@@ -414,8 +414,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
         package = utils::packageName()
       )
     )
-  
-  browser()
+
   generationIds <- c()
   eventCohortIdIndexMaps <-
     dplyr::tibble(eventCohortId = instantiatedEventCohortIds %>% unique()) %>%
@@ -589,7 +588,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
                   code,
                   name,
                   isCombo)
-  browser()
+  
   readr::write_excel_csv(
     x = pathwayAnalysisStatsData %>% SqlRender::camelCaseToSnakeCaseNames(),
     file = file.path(exportFolder, "pathwayAnalysisStats.csv"),
