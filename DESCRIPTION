@@ -1,0 +1,38 @@
+Package: CohortPathways
+Type: Package
+Title: Cohort Pathways to create pathways for Target and Event cohorts
+Version: 0.0.1
+Date: 2022-11-06
+Authors@R: c(
+    person("Gowtham", "Rao", email = "rao@ohdsi.org", role = c("aut", "cre")),
+    person("Observational Health Data Science and Informatics", role = c("cph"))
+  )
+Maintainer: Gowtham Rao <rao@ohdsi.org>
+Description: An R package that creates new cohort(s) from previously instantiated cohorts.
+Depends:
+	DatabaseConnector (>= 5.0.0),
+	R (>= 4.1.0)
+Imports:
+    checkmate,
+    dplyr,
+    lifecycle,
+    ParallelLogger,
+    SqlRender
+Suggests:
+  Eunomia,
+  remotes,
+  rmarkdown,
+  knitr,
+	testthat,
+	withr
+Remotes:
+  ohdsi/Eunomia,
+  ohdsi/ParallelLogger
+License: Apache License
+RoxygenNote: 7.2.1
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+Encoding: UTF-8
+Language: en-US
+URL: https://ohdsi.github.io/CohortPathways/, https://github.com/OHDSI/CohortPathways
+BugReports: https://github.com/OHDSI/CohortPathways/issues
