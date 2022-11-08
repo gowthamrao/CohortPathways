@@ -194,7 +194,6 @@ plotCohortPathways <- function(resultsFolder,
       results
   }
   
-  browser()
   result <- list(metadata = combis,
                  sunBurstPlots = sunBurstPlots)
   

@@ -123,14 +123,21 @@ executeCohortPathways <- function(connectionDetails = NULL,
   )
   checkmate::reportAssertions(collection = errorMessage)
   
+  # allow repeats is used as text 'true' or 'false' in sql
+  if (allowRepeats) {
+    allowRepeats <- 'true'
+  } else {
+    allowRepeats <- 'false'
+  }
   
-  if (file.exists(file.path(exportFolder, "pathwaysAnalysisPathsData.csv"))) {
+  
+  if (file.exists(file.path(exportFolder, "pathwaysAnalysisPaths.csv"))) {
     if (!overwrite) {
-      stop("   Previous pathwaysAnalysisPathsData.csv exists in export folder",
+      stop("   Previous pathwaysAnalysisPaths.csv exists in export folder",
            exportFolder)
     } else {
       ParallelLogger::logInfo(
-        "   Previous pathwaysAnalysisPathsData.csv exists in export folder and will be replaced."
+        "   Previous pathwaysAnalysisPaths.csv exists in export folder and will be replaced."
       )
     }
   }
@@ -408,6 +415,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
       )
     )
   
+  browser()
   generationIds <- c()
   eventCohortIdIndexMaps <-
     dplyr::tibble(eventCohortId = instantiatedEventCohortIds %>% unique()) %>%
@@ -581,17 +589,17 @@ executeCohortPathways <- function(connectionDetails = NULL,
                   code,
                   name,
                   isCombo)
-  
+  browser()
   readr::write_excel_csv(
     x = pathwayAnalysisStatsData %>% SqlRender::camelCaseToSnakeCaseNames(),
-    file = file.path(exportFolder, "pathwaysAnalysisPaths.csv"),
+    file = file.path(exportFolder, "pathwayAnalysisStats.csv"),
     na = "",
     append = FALSE
   )
   
   readr::write_excel_csv(
     x = pathwaysAnalysisPathsData %>% SqlRender::camelCaseToSnakeCaseNames(),
-    file = file.path(exportFolder, "pathwaysAnalysisPathsData.csv"),
+    file = file.path(exportFolder, "pathwaysAnalysisPaths.csv"),
     na = "",
     append = FALSE
   )
