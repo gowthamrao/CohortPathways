@@ -135,13 +135,13 @@ executeCohortPathways <- function(connectionDetails = NULL,
     }
   }
   
-  if (file.exists(file.path(exportFolder, "pathwayAnalysisStatsData.csv"))) {
+  if (file.exists(file.path(exportFolder, "pathwaysAnalysisPaths.csv"))) {
     if (!overwrite) {
-      stop("   Previous pathwayAnalysisStatsData.csv exists in export folder.",
+      stop("   Previous pathwaysAnalysisPaths.csv exists in export folder.",
            exportFolder)
     } else {
       ParallelLogger::logInfo(
-        "   Previous pathwayAnalysisStatsData.csv exists in export folder and will be replaced."
+        "   Previous pathwaysAnalysisPaths.csv exists in export folder and will be replaced."
       )
     }
   }
@@ -166,12 +166,10 @@ executeCohortPathways <- function(connectionDetails = NULL,
     }
   }
   
-  
   if (is.null(connection)) {
     connection <- DatabaseConnector::connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(connection))
   }
-  
   
   # perform checks on cohort database schema.
   tablesInCohortDatabaseSchema <-
@@ -586,7 +584,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
   
   readr::write_excel_csv(
     x = pathwayAnalysisStatsData %>% SqlRender::camelCaseToSnakeCaseNames(),
-    file = file.path(exportFolder, "pathwayAnalysisStatsData.csv"),
+    file = file.path(exportFolder, "pathwaysAnalysisPaths.csv"),
     na = "",
     append = FALSE
   )
@@ -612,16 +610,18 @@ executeCohortPathways <- function(connectionDetails = NULL,
     append = FALSE
   )
   
-  DatabaseConnector::insertTable(
-    connection = connection,
-    databaseSchema = targetDatabaseSChema,
-    tableName = pathwayAnalysisCodes,
-    data = pathwayAnalysisCodesData,
-    dropTableIfExists = FALSE,
-    createTable = FALSE,
-    tempTable = pathwayAnalysisCodesTableIsTemp,
-    camelCaseToSnakeCase = TRUE
-  )
+  if (!is.null(targetDatabaseSChema)) {
+    DatabaseConnector::insertTable(
+      connection = connection,
+      databaseSchema = targetDatabaseSChema,
+      tableName = pathwayAnalysisCodes,
+      data = pathwayAnalysisCodesData,
+      dropTableIfExists = FALSE,
+      createTable = FALSE,
+      tempTable = pathwayAnalysisCodesTableIsTemp,
+      camelCaseToSnakeCase = TRUE
+    )
+  }
   
   delta <- Sys.time() - start
   
