@@ -17,19 +17,18 @@ Imports:
     dplyr,
     lifecycle,
     ParallelLogger,
-    SqlRender
+    SqlRender,
+    sunburstR
 Suggests:
-  Eunomia,
   remotes,
   rmarkdown,
   knitr,
 	testthat,
 	withr
 Remotes:
-  ohdsi/Eunomia,
   ohdsi/ParallelLogger
 License: Apache License
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.2
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8

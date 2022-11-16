@@ -48,18 +48,22 @@ plotCohortPathways <- function(resultsFolder,
                                height = 400,
                                width = "100%") {
   start <- Sys.time()
-  
+
   errorMessage <- checkmate::makeAssertCollection()
   resultsFolder <- normalizePath(resultsFolder, mustWork = FALSE)
   errorMessage <-
-    createIfNotExist(type = "folder",
-                     name = resultsFolder,
-                     errorMessage = errorMessage)
+    createIfNotExist(
+      type = "folder",
+      name = resultsFolder,
+      errorMessage = errorMessage
+    )
   exportFolder <- normalizePath(exportFolder, mustWork = FALSE)
   errorMessage <-
-    createIfNotExist(type = "folder",
-                     name = exportFolder,
-                     errorMessage = errorMessage)
+    createIfNotExist(
+      type = "folder",
+      name = exportFolder,
+      errorMessage = errorMessage
+    )
   checkmate::assertDouble(
     x = pathwayAnalysisGenerationId,
     lower = 0,
@@ -75,11 +79,11 @@ plotCohortPathways <- function(resultsFolder,
     add = errorMessage
   )
   checkmate::reportAssertions(collection = errorMessage)
-  
+
   if (file.exists(file.path(exportFolder, "CohortPathways.rds"))) {
     warning("Replacing previous CohortPathways.rds file.")
   }
-  
+
   if (file.exists(file.path(resultsFolder, "pathwaysAnalysisPaths.csv"))) {
     pathwaysAnalysisPaths <-
       readr::read_csv(
@@ -89,7 +93,7 @@ plotCohortPathways <- function(resultsFolder,
     pathwaysAnalysisPaths <- pathwaysAnalysisPaths %>%
       SqlRender::snakeCaseToCamelCaseNames()
   }
-  
+
   if (file.exists(file.path(resultsFolder, "pathwayAnalysisCodes.csv"))) {
     pathwayAnalysisCodes <-
       readr::read_csv(
@@ -99,7 +103,7 @@ plotCohortPathways <- function(resultsFolder,
     pathwayAnalysisCodes <- pathwayAnalysisCodes %>%
       SqlRender::snakeCaseToCamelCaseNames()
   }
-  
+
   if (file.exists(file.path(resultsFolder, "pathwayAnalysisCodesLong.csv"))) {
     pathwayAnalysisCodesLong <-
       readr::read_csv(
@@ -109,12 +113,14 @@ plotCohortPathways <- function(resultsFolder,
     pathwayAnalysisCodesLong <- pathwayAnalysisCodesLong %>%
       SqlRender::snakeCaseToCamelCaseNames()
   }
-  
+
   combis <- pathwaysAnalysisPaths %>%
-    dplyr::select(targetCohortId,
-                  pathwayAnalysisGenerationId) %>%
+    dplyr::select(
+      targetCohortId,
+      pathwayAnalysisGenerationId
+    ) %>%
     dplyr::distinct()
-  
+
   if (!is.null(targetCohortId)) {
     combis <- combis %>%
       dplyr::filter(targetCohortId %in% c(!!targetCohortId))
@@ -123,20 +129,25 @@ plotCohortPathways <- function(resultsFolder,
     combis <- combis %>%
       dplyr::filter(pathwayAnalysisGenerationId %in% c(!!pathwayAnalysisGenerationId))
   }
-  
+
   combis <- combis %>%
-    dplyr::arrange(targetCohortId,
-                   pathwayAnalysisGenerationId) %>%
+    dplyr::arrange(
+      targetCohortId,
+      pathwayAnalysisGenerationId
+    ) %>%
     dplyr::distinct() %>%
     dplyr::mutate(key = dplyr::row_number())
-  
+
   sunBurstPlots <- list()
-  
+
   for (i in (1:nrow(combis))) {
     nestData <- pathwaysAnalysisPaths %>%
       dplyr::inner_join(combis[i, ],
-                        by = c("targetCohortId",
-                               "pathwayAnalysisGenerationId")) %>%
+        by = c(
+          "targetCohortId",
+          "pathwayAnalysisGenerationId"
+        )
+      ) %>%
       dplyr::distinct() %>%
       dplyr::mutate(key = dplyr::row_number()) %>%
       dplyr::select("key", dplyr::starts_with("step"), "countValue") %>%
@@ -167,19 +178,19 @@ plotCohortPathways <- function(resultsFolder,
       ) %>%
       dplyr::arrange(key) %>%
       dplyr::select(-key)
-    
+
     nest <- nestData %>%
       d3r::d3_nest(value_cols = "size")
-    
+
     sbType1 <- sunburstR::sunburst(
       data = nest,
       legend = FALSE,
       width = width,
       height = height
     )
-    
+
     sbType2 <- sunburstR::sund2b(data = nest, width = width)
-    
+
     results <- list(
       key = combis[i, ]$key,
       plot1 = sbType1,
@@ -189,25 +200,31 @@ plotCohortPathways <- function(resultsFolder,
       targetCohortId = combis[i, ]$targetCohortId,
       pathwayAnalysisGenerationId = combis[i, ]$pathwayAnalysisGenerationId
     )
-    
+
     sunBurstPlots[[combis[i, ]$key]] <-
       results
   }
-  
-  result <- list(metadata = combis,
-                 sunBurstPlots = sunBurstPlots)
-  
+
+  result <- list(
+    metadata = combis,
+    sunBurstPlots = sunBurstPlots
+  )
+
   if (file.exists(file.path(exportFolder, "CohortPathways.rds"))) {
     unlink(file.path(exportFolder, "CohortPathways.rds"))
   }
-  
-  saveRDS(object = result,
-          file = file.path(exportFolder, "CohortPathways.rds"))
-  
+
+  saveRDS(
+    object = result,
+    file = file.path(exportFolder, "CohortPathways.rds")
+  )
+
   delta <- Sys.time() - start
-  
-  ParallelLogger::logInfo("Plotting took ",
-                          signif(delta, 3),
-                          " ",
-                          attr(delta, "units"))
+
+  ParallelLogger::logInfo(
+    "Plotting took ",
+    signif(delta, 3),
+    " ",
+    attr(delta, "units")
+  )
 }
