@@ -90,6 +90,10 @@ plotCohortPathways <- function(resultsFolder,
         file = file.path(resultsFolder, "pathwaysAnalysisPaths.csv"),
         col_types = readr::cols()
       )
+    if (nrow(pathwaysAnalysisPaths) == 0) {
+      warning("no data")
+      return(NULL)
+    }
     pathwaysAnalysisPaths <- pathwaysAnalysisPaths %>%
       SqlRender::snakeCaseToCamelCaseNames()
   }
@@ -100,6 +104,10 @@ plotCohortPathways <- function(resultsFolder,
         file = file.path(resultsFolder, "pathwayAnalysisCodes.csv"),
         col_types = readr::cols()
       )
+    if (nrow(pathwayAnalysisCodes) == 0) {
+      warning("no data")
+      return(NULL)
+    }
     pathwayAnalysisCodes <- pathwayAnalysisCodes %>%
       SqlRender::snakeCaseToCamelCaseNames()
   }
