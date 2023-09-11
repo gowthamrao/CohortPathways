@@ -70,6 +70,9 @@ this should include both the database and schema name, for example
 
 \item{cohortTable}{The name of the cohort table.}
 }
+\value{
+Nothing is returned
+}
 \description{
 Runs the cohort pathways on all instantiated combinations of target and event cohorts.
 Assumes the cohorts have already been instantiated.

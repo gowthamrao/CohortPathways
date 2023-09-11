@@ -1,4 +1,4 @@
-# Copyright 2022 Observational Health Data Sciences and Informatics
+# Copyright 2023 Observational Health Data Sciences and Informatics
 #
 # This file is part of CohortPathways
 #
@@ -21,17 +21,32 @@
 #' Runs the cohort pathways on all instantiated combinations of target and event cohorts.
 #' Assumes the cohorts have already been instantiated.
 #'
-#' @template ConnectionDetails
-#' @template Connection
-#' @template CohortDatabaseSchema
-#' @template CohortTable
-#' @template TargetCohortIds
-#' @template EventCohortIds
+#' @param connectionDetails   An object of type \code{connectionDetails} as created using the
+#'                            \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
+#'                            DatabaseConnector package. Can be left NULL if \code{connection} is
+#'                            provided.
+#' @param connection          An object of type \code{connection} as created using the
+#'                            \code{\link[DatabaseConnector]{connect}} function in the
+#'                            DatabaseConnector package. Can be left NULL if \code{connectionDetails}
+#'                            is provided, in which case a new connection will be opened at the start
+#'                            of the function, and closed when the function finishes.
+#' @param cohortDatabaseSchema   Schema name where your cohort tables reside. Note that for SQL Server,
+#'                               this should include both the database and schema name, for example
+#'                               'scratch.dbo'.
+#' @param cohortTable            The name of the cohort table.
+#' @param targetCohortIds   A vector of one or more Cohort Ids corresponding to target cohort (s).
+#' @param eventCohortIds   A vector of one or more Cohort Ids corresponding to event cohort (s).
 #' @param    cohortDefinitionSet      A data frame object with minimum two columns, cohortId and cohortName. It should have all the cohortId's
 #'                                    in targetCohortId and eventCohortId. This is the source of cohort names.
-#' @template TargetDatabaseSchema
-#' @template TempEmulationSchema
-#' @template CohortTable
+#' @param targetDatabaseSchema   (Optional) Schema name where output pathway tables would reside. This is also known as
+#'                               as resultsDatabaseSChema. If not specified, scratch schema will be used. The output may not
+#'                               persist in the database after disconnection. Note that for SQL Server,
+#'                               this should include both the database and schema name, for example
+#'                               'scratch.dbo'.
+#' @param tempEmulationSchema   Some database platforms like Oracle and Impala do not truly support
+#'                              temp tables. To emulate temp tables, provide a schema with write
+#'                              privileges where temp tables can be created.
+#' @param cohortTable            The name of the cohort table.
 #' @param exportFolder                The folder where the output will be exported to. If this folder
 #'                                    does not exist it will be created.
 #' @param minCellCount                (Default = 5) The minimum cell count for fields contains person counts or fractions.
@@ -39,6 +54,8 @@
 #' @param maxDepth                    (Default = 5) Maximum number of steps in a given pathway to be included in the sunburst plot.
 #' @param collapseWindow              (Default = 30) Any dates found within the specified collapse days will be reassigned the earliest date. Collapsing dates reduces pathway variation, leading to a reduction in 'noise' in the result.
 #' @param overwrite                   (Default = TRUE) Do you want to overwrite results?
+#'
+#' @return   Nothing is returned
 #'
 #' @examples
 #' \dontrun{
@@ -75,7 +92,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
                                   collapseWindow = 30,
                                   overwrite = TRUE) {
   start <- Sys.time()
-  ParallelLogger::logInfo("Run Cohort Pathways started at ", start)
+  message(paste0("Run Cohort Pathways started at ", start))
 
   errorMessage <- checkmate::makeAssertCollection()
   checkmate::assertCharacter(
@@ -147,7 +164,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
         exportFolder
       )
     } else {
-      ParallelLogger::logInfo(
+      message(
         "   Previous pathwaysAnalysisPaths.csv exists in export folder and will be replaced."
       )
     }
@@ -160,7 +177,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
         exportFolder
       )
     } else {
-      ParallelLogger::logInfo(
+      message(
         "   Previous pathwaysAnalysisPaths.csv exists in export folder and will be replaced."
       )
     }
@@ -173,7 +190,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
         exportFolder
       )
     } else {
-      ParallelLogger::logInfo("   Previous pathwayAnalysisCodes.csv exists in export folder and will be replaced.")
+      message("   Previous pathwayAnalysisCodes.csv exists in export folder and will be replaced.")
     }
   }
 
@@ -184,7 +201,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
         exportFolder
       )
     } else {
-      ParallelLogger::logInfo(
+      message(
         "   Previous pathwayAnalysisCodesLong.csv exists in export folder and will be replaced."
       )
     }
@@ -232,7 +249,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
     dplyr::tibble()
 
   if (nrow(cohortCounts) < length(c(targetCohortIds, eventCohortIds) %>% unique())) {
-    ParallelLogger::logInfo("Not all cohorts have more than 0 records.")
+    message("Not all cohorts have more than 0 records.")
 
     if (nrow(cohortCounts %>% dplyr::filter(.data$cohortId %in% c(targetCohortIds))) == 0) {
       stop("None of the target cohorts are instantiated.")
@@ -242,27 +259,31 @@ executeCohortPathways <- function(connectionDetails = NULL,
       stop("None of the event cohorts are instantiated.")
     }
 
-    ParallelLogger::logInfo(
+    message(
       sprintf(
         "    Found %s of %s (%1.2f%%) target cohorts instantiated. ",
-        nrow(cohortCounts %>% dplyr::filter(.data$cohortId %in% c(
-          targetCohortIds
-        ))),
+        nrow(cohortCounts %>% dplyr::filter(
+          .data$cohortId %in% c(targetCohortIds)
+        )),
         length(targetCohortIds),
         100 * (
-          nrow(cohortCounts %>% dplyr::filter(.data$cohortId %in% c(
-            targetCohortIds
-          ))) / length(targetCohortIds)
+          nrow(cohortCounts %>% dplyr::filter(
+            .data$cohortId %in% c(targetCohortIds)
+          )) / length(targetCohortIds)
         )
       )
     )
-    ParallelLogger::logInfo(
+    message(
       sprintf(
         "    Found %s of %s (%1.2f%%) event cohorts instantiated. ",
-        nrow(cohortCounts %>% dplyr::filter(.data$cohortId %in% c(eventCohortIds))),
+        nrow(cohortCounts %>% dplyr::filter(
+          .data$cohortId %in% c(eventCohortIds)
+        )),
         length(eventCohortIds),
         100 * (
-          nrow(cohortCounts %>% dplyr::filter(.data$cohortId %in% c(eventCohortIds))) / length(eventCohortIds)
+          nrow(cohortCounts %>% dplyr::filter(
+            .data$cohortId %in% c(eventCohortIds)
+          )) / length(eventCohortIds)
         )
       )
     )
@@ -276,17 +297,17 @@ executeCohortPathways <- function(connectionDetails = NULL,
   instantiatedTargetCohortIds <-
     intersect(x = targetCohortIds, y = cohortCounts$cohortId)
 
-  pathwayAnalysisCodes <- "pathway_analysis_codes"
+  pathwayAnalysisCodes <- "pa_codes"
   if (!is.null(targetDatabaseSChema)) {
-    pathwayAnalysisCodes <-
-      paste0(targetDatabaseSChema, ".", pathwayAnalysisCodeTable)
+    # pathwayAnalysisCodes <-
+    #   paste0(targetDatabaseSChema, ".", pathwayAnalysisCodeTable)
     pathwayAnalysisCodesTableIsTemp <- FALSE
   } else {
     pathwayAnalysisCodes <- paste0("#", pathwayAnalysisCodes)
     pathwayAnalysisCodesTableIsTemp <- TRUE
   }
 
-  pathwayAnalysisEvents <- "pathway_analysis_events"
+  pathwayAnalysisEvents <- "pa_events"
   if (!is.null(targetDatabaseSChema)) {
     pathwayAnalysisEvents <-
       paste0(targetDatabaseSChema, ".", pathwayAnalysisEvents)
@@ -294,7 +315,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
     pathwayAnalysisEvents <- paste0("#", pathwayAnalysisEvents)
   }
 
-  pathwayAnalysisPaths <- "pathway_analysis_paths"
+  pathwayAnalysisPaths <- "pa_paths"
   if (!is.null(targetDatabaseSChema)) {
     pathwayAnalysisPaths <-
       paste0(targetDatabaseSChema, ".", pathwayAnalysisPaths)
@@ -302,7 +323,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
     pathwayAnalysisPaths <- paste0("#", pathwayAnalysisPaths)
   }
 
-  pathwayAnalysisStats <- "pathway_analysis_stats"
+  pathwayAnalysisStats <- "pa_stats"
   if (!is.null(targetDatabaseSChema)) {
     pathwayAnalysisStats <-
       paste0(targetDatabaseSChema, ".", pathwayAnalysisStats)
@@ -326,16 +347,16 @@ executeCohortPathways <- function(connectionDetails = NULL,
         databaseSchema = targetDatabaseSChema
       )
 
-    if ("pathway_analysis_codes" %in% tolower(tablesInTargetDatabaseSchema)) {
+    if ("pa_codes" %in% tolower(tablesInTargetDatabaseSchema)) {
       createTablePathwayAnalysisCodes <- FALSE
     }
-    if ("pathway_analysis_events" %in% tolower(tablesInTargetDatabaseSchema)) {
+    if ("pa_events" %in% tolower(tablesInTargetDatabaseSchema)) {
       createTablePathwayAnalysisEvents <- FALSE
     }
-    if ("pathway_analysis_paths" %in% tolower(tablesInTargetDatabaseSchema)) {
+    if ("pa_paths" %in% tolower(tablesInTargetDatabaseSchema)) {
       createTablePathwayAnalysisPaths <- FALSE
     }
-    if ("pathway_analysis_stats" %in% tolower(tablesInTargetDatabaseSchema)) {
+    if ("pa_stats" %in% tolower(tablesInTargetDatabaseSchema)) {
       createTablePathwayAnalysisStats <- FALSE
     }
   }
@@ -466,16 +487,16 @@ executeCohortPathways <- function(connectionDetails = NULL,
       dplyr::mutate(
         sql = paste0(
           "SELECT ",
-          eventCohortId,
+          .data$eventCohortId,
           " AS cohort_definition_id, ",
-          cohortIndex,
+          .data$cohortIndex,
           " AS cohort_index"
         )
       ) %>%
       dplyr::pull(.data$sql) %>%
       paste0(collapse = " union all ")
 
-    ParallelLogger::logInfo(
+    message(
       paste0(
         "   Generating Cohort Pathways for target cohort: ",
         targetCohortId,
@@ -514,7 +535,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
       pathway_analysis_paths = pathwayAnalysisPaths,
       generation_id = generationId
     )
-    ParallelLogger::logInfo(" Done.")
+    message(" Done.")
     generationIds <- c(generationId, generationIds)
   }
 
@@ -668,7 +689,7 @@ executeCohortPathways <- function(connectionDetails = NULL,
 
   delta <- Sys.time() - start
 
-  ParallelLogger::logInfo(
+  message(
     "Computing Cohort Pathways took ",
     signif(delta, 3),
     " ",

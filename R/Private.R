@@ -1,4 +1,4 @@
-# Copyright 2022 Observational Health Data Sciences and Informatics
+# Copyright 2023 Observational Health Data Sciences and Informatics
 #
 # This file is part of CohortPathways
 #
@@ -25,14 +25,12 @@ createIfNotExist <-
     }
     if (!is.null(type)) {
       if (length(name) == 0) {
-        stop(ParallelLogger::logError("Must specify ", name))
+        stop(message("Must specify ", name))
       }
       if (type %in% c("folder")) {
         if (!file.exists(gsub("/$", "", name))) {
           dir.create(name, recursive = recursive)
-          ParallelLogger::logInfo("Created ", type, " at ", name)
-        } else {
-          # ParallelLogger::logInfo(type, " already exists at ", name)
+          message("Created ", type, " at ", name)
         }
       }
       checkmate::assertDirectory(
@@ -45,9 +43,9 @@ createIfNotExist <-
   }
 
 extractBitSum <- function(x) {
-  length <- round(log(x = x, base = 2) + 2)
+  lengthVar <- round(log(x = x, base = 2) + 2)
 
-  series <- c(2^(0:length))
+  series <- c(2^(0:lengthVar))
 
   remainder <- x
   combination <- c()

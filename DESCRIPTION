@@ -1,14 +1,15 @@
 Package: CohortPathways
 Type: Package
-Title: Cohort Pathways to create pathways for Target and Event cohorts
-Version: 0.0.1
-Date: 2022-11-06
+Title: Create Pathways From Target to Event Cohorts
+Version: 0.0.2
+Date: 2023-09-11
 Authors@R: c(
     person("Gowtham", "Rao", email = "rao@ohdsi.org", role = c("aut", "cre")),
     person("Observational Health Data Science and Informatics", role = c("cph"))
   )
 Maintainer: Gowtham Rao <rao@ohdsi.org>
-Description: An R package that creates new cohort(s) from previously instantiated cohorts.
+Description: This software tool is designed to compute the temporal relationship defined as pathways
+    between any two instantied cohorts. The cohorts are input as Target and event cohorts.
 Depends:
 	DatabaseConnector (>= 5.0.0),
 	R (>= 4.1.0)
@@ -16,19 +17,17 @@ Imports:
     checkmate,
     dplyr,
     lifecycle,
-    ParallelLogger,
-    SqlRender,
-    sunburstR
+    readr,
+    rlang,
+    SqlRender
 Suggests:
   remotes,
   rmarkdown,
   knitr,
 	testthat,
 	withr
-Remotes:
-  ohdsi/ParallelLogger
 License: Apache License
-RoxygenNote: 7.2.2
+RoxygenNote: 7.2.3
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8

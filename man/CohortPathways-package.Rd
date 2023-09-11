@@ -4,9 +4,9 @@
 \name{CohortPathways-package}
 \alias{CohortPathways}
 \alias{CohortPathways-package}
-\title{CohortPathways: Cohort Pathways to create pathways for Target and Event cohorts}
+\title{CohortPathways: Create Pathways From Target to Event Cohorts}
 \description{
-An R package that creates new cohort(s) from previously instantiated cohorts.
+This software tool is designed to compute the temporal relationship defined as pathways between any two instantied cohorts. The cohorts are input as Target and event cohorts.
 }
 \seealso{
 Useful links:

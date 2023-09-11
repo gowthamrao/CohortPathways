@@ -1,8 +1,5 @@
 testthat::test_that("Execute Cohort Pathways", {
-  # generate unique name for a cohort table
-  sysTime <- as.numeric(Sys.time()) * 100000
-  tableName <- paste0("cr", sysTime)
-  tempTableName <- paste0("#", tableName, "_1")
+  testthat::skip_if(condition = skipCdmTests)
 
   cohortDefinitionSet <- dplyr::tibble(
     cohortId = c(1, 2, 10, 20),
@@ -46,7 +43,7 @@ testthat::test_that("Execute Cohort Pathways", {
   DatabaseConnector::insertTable(
     connection = connection,
     databaseSchema = cohortDatabaseSchema,
-    tableName = tableName,
+    tableName = cohortTableName,
     data = dplyr::bind_rows(targetCohort, eventCohort) %>% dplyr::distinct(),
     dropTableIfExists = TRUE,
     createTable = TRUE,
@@ -63,7 +60,7 @@ testthat::test_that("Execute Cohort Pathways", {
         order by cohort_definition_id, subject_id, cohort_start_date;"
       ),
       cohort_database_schema = cohortDatabaseSchema,
-      table_name = tableName,
+      table_name = cohortTableName,
       snakeCaseToCamelCase = TRUE
     ) %>%
     dplyr::tibble()
@@ -80,7 +77,7 @@ testthat::test_that("Execute Cohort Pathways", {
   CohortPathways::executeCohortPathways(
     connection = connection,
     cohortDatabaseSchema = cohortDatabaseSchema,
-    cohortTableName = tableName,
+    cohortTableName = cohortTableName,
     targetCohortIds = c(1, 2),
     eventCohortIds = c(10, 20),
     cohortDefinitionSet = cohortDefinitionSet,
@@ -95,10 +92,10 @@ testthat::test_that("Execute Cohort Pathways", {
     file.path(exportFolder, "pathwayAnalysisCodesLong.csv")
   ))
   testthat::expect_true(object = file.exists(
-    file.path(exportFolder, "pathwayAnalysisStatsData.csv")
+    file.path(exportFolder, "pathwayAnalysisStats.csv")
   ))
   testthat::expect_true(object = file.exists(
-    file.path(exportFolder, "pathwaysAnalysisPathsData.csv")
+    file.path(exportFolder, "pathwaysAnalysisPaths.csv")
   ))
 
   pathwayAnalysisCodes <-
@@ -117,15 +114,24 @@ testthat::test_that("Execute Cohort Pathways", {
 
   pathwayAnalysisStatsData <-
     readr::read_csv(
-      file = file.path(exportFolder, "pathwayAnalysisStatsData.csv"),
+      file = file.path(exportFolder, "pathwayAnalysisStats.csv"),
       col_types = readr::cols()
     ) %>% SqlRender::snakeCaseToCamelCaseNames()
   testthat::expect_true(object = nrow(pathwayAnalysisStatsData) > 0)
 
   pathwaysAnalysisPathsData <-
     readr::read_csv(
-      file = file.path(exportFolder, "pathwaysAnalysisPathsData.csv"),
+      file = file.path(exportFolder, "pathwaysAnalysisPaths.csv"),
       col_types = readr::cols()
     ) %>% SqlRender::snakeCaseToCamelCaseNames()
   testthat::expect_true(object = nrow(pathwayAnalysisStatsData) > 0)
+
+  DatabaseConnector::renderTranslateExecuteSql(
+    connection = DatabaseConnector::connect(connectionDetails = connectionDetails),
+    sql = "DROP TABLE IF EXISTS @cohort_database_schema.@table_temp;",
+    table_temp = cohortTableName,
+    cohort_database_schema = cohortDatabaseSchema,
+    progressBar = FALSE,
+    reportOverallTime = FALSE
+  )
 })

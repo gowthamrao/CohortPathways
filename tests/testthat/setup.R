@@ -2,6 +2,11 @@ library(testthat)
 library(CohortPathways)
 library(dplyr)
 
+cohortTableName <- paste0(
+  "ct_",
+  paste(sample(letters, 10), collapse = "")
+)
+
 dbms <- getOption("dbms", default = "postgresql")
 message("************* Testing on ", dbms, " *************")
 
